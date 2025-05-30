@@ -195,9 +195,7 @@ app.post('/api/employee', async (req, res) => {
     } catch (error) {
         console.error('Error while creating employee:', error);
         res.status(500).json({ success: false, error: 'Failed to create employee' });
-    } finally {
-        await client.close();
-    }
+    } 
 });
 
 
