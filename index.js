@@ -13,7 +13,7 @@ app.use(express.json());
 
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({
-    origin: ['http://localhost:5173', 'https://ind-kit-client.vercel.app']
+    origin: ['http://localhost:5174', 'https://ind-kit-client.vercel.app']
 }));
   
 
@@ -167,8 +167,16 @@ app.delete('/api/employee/:id', async (req, res) => {
 
 app.post('/api/employee', async (req, res) => {
     try {
-        const lastEmployee = await client.db("t_db").collection("employees").findOne().sort({ f_Id: -1 });
-        const nextId = lastEmployee ? lastEmployee.f_Id + 1 : 1;
+        await client.connect();
+        const db = client.db('t_db');
+        const collection = db.collection('employees');
+
+        const lastEmployee = await collection
+            .find()
+            .sort({ f_Id: -1 }) // Sort in descending order to get the highest f_Id
+            .limit(1)
+            .toArray(); // Convert cursor to array
+        const nextId = lastEmployee.length > 0 ? lastEmployee[0].f_Id + 1 : 1;
 
         const employeeData = {
             f_Id: nextId,
@@ -182,13 +190,13 @@ app.post('/api/employee', async (req, res) => {
             f_Createdate: req.body.f_Createdate ? new Date(req.body.f_Createdate) : new Date(),
         };
 
-        const employee = new Employee(employeeData);
-        await employee.save();
-
-        res.status(201).json({ data: employee, success: true });
+        const result = await collection.insertOne(employeeData);
+        res.status(201).json({ data: { _id: result.insertedId, ...employeeData }, success: true });
     } catch (error) {
         console.error('Error while creating employee:', error);
         res.status(500).json({ success: false, error: 'Failed to create employee' });
+    } finally {
+        await client.close();
     }
 });
 
